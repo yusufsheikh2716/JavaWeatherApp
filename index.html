@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WeatherApp — Made by Mohd Yusuf</title>
+  <meta name="description" content="Real-time weather app by Mohd Yusuf. Search any city for live temperature, humidity, wind speed, sunrise & sunset data powered by OpenWeatherMap." />
+  <meta name="author" content="Mohd Yusuf" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:    #080818;
+      --bg-card:    #0f0f2d;
+      --accent:     #6366f1;
+      --accent-2:   #818cf8;
+      --glow:       rgba(99, 102, 241, 0.35);
+      --text-white: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success:    #22c55e;
+      --warn:       #f59e0b;
+      --border:     rgba(99, 102, 241, 0.2);
+      --glass:      rgba(15, 15, 45, 0.65);
+    }
+
+    html { color-scheme: dark; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-white);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated Background ─────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(99,102,241,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(129,140,248,0.1) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(34,197,94,0.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Stars ───────────────────────────────────────────── */
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: #fff;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.4); }
+    }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      place-items: start center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 2rem 0 1.5rem;
+    }
+    .header-icon {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-2), var(--text-white));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      font-weight: 400;
+    }
+
+    /* ── Search ──────────────────────────────────────────── */
+    .search-wrap {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1.5rem 0 1rem;
+    }
+    .search-wrap input {
+      flex: 1;
+      padding: 0.85rem 1.1rem;
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      color: var(--text-white);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-wrap input::placeholder { color: var(--text-muted); }
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--glow);
+    }
+    .search-wrap button {
+      padding: 0.85rem 1.4rem;
+      border-radius: 14px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 18px var(--glow);
+      white-space: nowrap;
+    }
+    .search-wrap button:hover {
+      background: var(--accent-2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 24px var(--glow);
+    }
+    .search-wrap button:active { transform: translateY(0); }
+    .search-wrap button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Cards ───────────────────────────────────────────── */
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 0.85rem;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      animation: slideUp 0.4s ease both;
+    }
+    .card:hover { border-color: rgba(99,102,241,0.45); box-shadow: 0 8px 32px rgba(99,102,241,0.12); }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── City Card ───────────────────────────────────────── */
+    .city-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .city-info .city-name {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .city-info .city-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+      display: inline-block;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    .weather-emoji {
+      font-size: 4rem;
+      line-height: 1;
+      filter: drop-shadow(0 4px 12px rgba(99,102,241,0.3));
+      animation: float 4s ease-in-out infinite 0.5s;
+    }
+
+    /* ── Temp Card ───────────────────────────────────────── */
+    .temp-card {
+      text-align: center;
+    }
+    .temp-value {
+      font-size: 5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+    .feels-like {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+    .weather-desc {
+      display: inline-block;
+      margin-top: 0.6rem;
+      padding: 0.3rem 1rem;
+      border-radius: 999px;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.3);
+      font-size: 0.85rem;
+      color: var(--accent-2);
+      font-weight: 500;
+      text-transform: capitalize;
+    }
+
+    /* ── Stats Grid ──────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+    }
+    .stat-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 1rem;
+      transition: background 0.2s;
+    }
+    .stat-item:hover { background: rgba(99,102,241,0.07); }
+    .stat-icon { font-size: 1.4rem; margin-bottom: 0.4rem; display: block; }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-val { font-size: 1.3rem; font-weight: 700; color: var(--text-white); margin-top: 0.15rem; }
+
+    /* ── Sun Card ────────────────────────────────────────── */
+    .sun-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+    }
+    .sun-item { text-align: center; }
+    .sun-icon { font-size: 2rem; display: block; }
+    .sun-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sun-time { font-size: 1.5rem; font-weight: 700; margin-top: 0.2rem; }
+
+    /* ── Error State ─────────────────────────────────────── */
+    .error-card {
+      border-color: rgba(239,68,68,0.4);
+      background: rgba(239,68,68,0.05);
+      text-align: center;
+      padding: 2rem;
+    }
+    .error-card .err-icon { font-size: 2.5rem; display: block; }
+    .error-card p { color: #fca5a5; font-size: 0.95rem; margin-top: 0.5rem; }
+
+    /* ── Loading Shimmer ─────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+      height: 1em;
+      display: inline-block;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    footer a { color: var(--accent-2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 420px) {
+      .temp-value { font-size: 3.8rem; }
+      .city-info .city-name { font-size: 1.6rem; }
+      .weather-emoji { font-size: 3rem; }
+    }
+
+    /* ── Hidden state ────────────────────────────────────── */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div class="stars" id="stars" aria-hidden="true"></div>
+
+<div class="app">
+  <div class="container">
+
+    <!-- Header -->
+    <header>
+      <span class="header-icon" id="header-icon" aria-hidden="true">🌤</span>
+      <h1>WeatherApp</h1>
+      <p>Made by Mohd Yusuf · BBD NIIT Lucknow · Powered by OpenWeatherMap</p>
+    </header>
+
+    <!-- Search -->
+    <div class="search-wrap">
+      <input
+        type="search"
+        id="city-input"
+        placeholder="Search any city… (e.g. Tokyo, Paris)"
+        autocomplete="off"
+        aria-label="City name"
+      />
+      <button id="search-btn" aria-label="Search weather">Search</button>
+    </div>
+
+    <!-- Weather Content -->
+    <main id="weather-content">
+
+      <!-- City Card -->
+      <div class="card city-card" id="city-card">
+        <div class="city-info">
+          <div class="city-name" id="city-name">Lucknow</div>
+          <div class="city-sub">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span id="city-sub">India · Live Weather</span>
+          </div>
+        </div>
+        <div class="weather-emoji" id="weather-emoji" aria-label="Weather icon">🌤</div>
+      </div>
+
+      <!-- Temp Card -->
+      <div class="card temp-card">
+        <div class="temp-value" id="temp-value">--°C</div>
+        <div class="feels-like" id="feels-like">Feels like --°C</div>
+        <div class="weather-desc" id="weather-desc">Searching…</div>
+      </div>
+
+      <!-- Stats Grid Card -->
+      <div class="card">
+        <div class="stats-grid">
+          <div class="stat-item" id="stat-humidity">
+            <span class="stat-icon" aria-hidden="true">💧</span>
+            <div class="stat-label">Humidity</div>
+            <div class="stat-val" id="stat-humidity-val">--%</div>
+          </div>
+          <div class="stat-item" id="stat-wind">
+            <span class="stat-icon" aria-hidden="true">💨</span>
+            <div class="stat-label">Wind Speed</div>
+            <div class="stat-val" id="stat-wind-val">-- m/s</div>
+          </div>
+          <div class="stat-item" id="stat-pressure">
+            <span class="stat-icon" aria-hidden="true">🌡️</span>
+            <div class="stat-label">Pressure</div>
+            <div class="stat-val" id="stat-pressure-val">-- hPa</div>
+          </div>
+          <div class="stat-item" id="stat-visibility">
+            <span class="stat-icon" aria-hidden="true">👁️</span>
+            <div class="stat-label">Visibility</div>
+            <div class="stat-val" id="stat-visibility-val">-- km</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sun Card -->
+      <div class="card sun-card">
+        <div class="sun-item">
+          <span class="sun-icon" aria-hidden="true">🌅</span>
+          <div class="sun-label">Sunrise</div>
+          <div class="sun-time" id="sunrise-val">--:--</div>
+        </div>
+        <div class="sun-item">
+          <span class="sun-icon" aria-hidden="true">🌇</span>
+          <div class="sun-label">Sunset</div>
+          <div class="sun-time" id="sunset-val">--:--</div>
+        </div>
+      </div>
+
+      <!-- Error Card (hidden by default) -->
+      <div class="card error-card hidden" id="error-card" role="alert">
+        <span class="err-icon">❌</span>
+        <p id="error-msg">City not found. Please try again.</p>
+      </div>
+
+    </main>
+
+    <footer>
+      Built with ☕ &amp; passion by <a href="https://github.com/yusufsheikh2716" target="_blank" rel="noopener">Mohd Yusuf</a>
+      · <a href="https://www.linkedin.com/in/mohd-yusuf-sheikh" target="_blank" rel="noopener">LinkedIn</a>
+      · Source: <a href="https://github.com/yusufsheikh2716/WeatherApp" target="_blank" rel="noopener">GitHub</a>
+    </footer>
+
+  </div>
+</div>
+
+<script>
+  /* ── Config ─────────────────────────────────────────────── */
+  const API_KEY  = 'f57b50a1eddf9249d3be20d44dc900a5';
+  const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
+
+  /* ── DOM Refs ───────────────────────────────────────────── */
+  const cityInput    = document.getElementById('city-input');
+  const searchBtn    = document.getElementById('search-btn');
+  const cityName     = document.getElementById('city-name');
+  const citySub      = document.getElementById('city-sub');
+  const weatherEmoji = document.getElementById('weather-emoji');
+  const headerIcon   = document.getElementById('header-icon');
+  const tempValue    = document.getElementById('temp-value');
+  const feelsLike    = document.getElementById('feels-like');
+  const weatherDesc  = document.getElementById('weather-desc');
+  const humVal       = document.getElementById('stat-humidity-val');
+  const windVal      = document.getElementById('stat-wind-val');
+  const pressVal     = document.getElementById('stat-pressure-val');
+  const visVal       = document.getElementById('stat-visibility-val');
+  const sunriseVal   = document.getElementById('sunrise-val');
+  const sunsetVal    = document.getElementById('sunset-val');
+  const errorCard    = document.getElementById('error-card');
+  const errorMsg     = document.getElementById('error-msg');
+
+  /* ── Stars ──────────────────────────────────────────────── */
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top  = Math.random() * 100 + '%';
+    s.style.setProperty('--dur',   (2 + Math.random() * 4) + 's');
+    s.style.setProperty('--delay', (Math.random() * 5) + 's');
+    starsEl.appendChild(s);
+  }
+
+  /* ── Emoji Map ──────────────────────────────────────────── */
+  function getEmoji(icon) {
+    const map = {
+      '01': '☀️', '02': '🌤', '03': '🌥',
+      '04': '☁️', '09': '🌧', '10': '🌦',
+      '11': '⛈', '13': '❄️', '50': '🌫'
+    };
+    return map[icon.slice(0, 2)] ?? '🌡';
+  }
+
+  /* ── Time Format ────────────────────────────────────────── */
+  function formatTime(unix, offset) {
+    // offset in seconds from OWM API (timezone field)
+    const d = new Date((unix + offset) * 1000);
+    const h = d.getUTCHours().toString().padStart(2, '0');
+    const m = d.getUTCMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+
+  /* ── Set Loading State ──────────────────────────────────── */
+  function setLoading(yes) {
+    searchBtn.disabled = yes;
+    searchBtn.textContent = yes ? '…' : 'Search';
+    if (yes) {
+      tempValue.textContent  = '--°C';
+      feelsLike.textContent  = 'Fetching data…';
+      weatherDesc.textContent = 'Loading';
+    }
+  }
+
+  /* ── Show/Hide Error ────────────────────────────────────── */
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorCard.classList.remove('hidden');
+  }
+  function hideError() { errorCard.classList.add('hidden'); }
+
+  /* ── Update UI ──────────────────────────────────────────── */
+  function updateUI(data) {
+    const emoji = getEmoji(data.weather[0].icon);
+
+    cityName.textContent    = data.name;
+    citySub.textContent     = `${data.sys.country} · Live Weather`;
+    weatherEmoji.textContent = emoji;
+    headerIcon.textContent  = emoji;
+
+    tempValue.textContent   = `${data.main.temp.toFixed(1)}°C`;
+    feelsLike.textContent   = `Feels like ${data.main.feels_like.toFixed(1)}°C`;
+    weatherDesc.textContent = capitalize(data.weather[0].description);
+
+    humVal.textContent      = `${data.main.humidity}%`;
+    windVal.textContent     = `${data.wind.speed} m/s`;
+    pressVal.textContent    = `${data.main.pressure} hPa`;
+    visVal.textContent      = `${((data.visibility ?? 0) / 1000).toFixed(1)} km`;
+
+    const tz = data.timezone ?? 0;
+    sunriseVal.textContent  = formatTime(data.sys.sunrise, tz);
+    sunsetVal.textContent   = formatTime(data.sys.sunset, tz);
+
+    // Animate cards in fresh
+    document.querySelectorAll('.card').forEach((c, i) => {
+      c.style.animation = 'none';
+      c.offsetHeight; // reflow
+      c.style.animation = `slideUp 0.4s ease ${i * 0.07}s both`;
+    });
+  }
+
+  /* ── Fetch Weather ──────────────────────────────────────── */
+  async function fetchWeather(city) {
+    hideError();
+    setLoading(true);
+    try {
+      const url = `${BASE_URL}?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!res.ok || data.cod !== 200) {
+        showError(data.message ?? 'City not found. Try another city.');
+        return;
+      }
+
+      updateUI(data);
+    } catch (err) {
+      showError('Network error. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ── Capitalize ─────────────────────────────────────────── */
+  function capitalize(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+  }
+
+  /* ── Events ─────────────────────────────────────────────── */
+  function handleSearch() {
+    const city = cityInput.value.trim();
+    if (city) fetchWeather(city);
+  }
+
+  searchBtn.addEventListener('click', handleSearch);
+  cityInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
+
+  /* ── Init ───────────────────────────────────────────────── */
+  fetchWeather('Lucknow');
+</script>
+</body>
+</html>
