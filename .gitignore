@@ -1,0 +1,11 @@
+# Compiled Java classes
+*.class
+
+# jar files (user downloads locally)
+json.jar
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
